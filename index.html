@@ -1,250 +1,242 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Advanced Live Navigation Map with Voice & Modes</title>
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Leaflet Routing Machine CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
-    body, html { width: 100%; height: 100%; overflow: hidden; }
-    #map { width: 100vw; height: 100vh; z-index: 1; }
-
-    .search-container {
-      position: absolute; top: 15px; left: 15px; z-index: 1000;
-      background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px);
-      padding: 15px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-      width: 380px; max-width: 90vw; display: flex; flex-direction: column; gap: 10px;
-    }
-    .input-group { position: relative; display: flex; align-items: center; }
-    .input-icon { position: absolute; left: 12px; color: #666; z-index: 10; }
-    .input-group input, .input-group select {
-      width: 100%; padding: 10px 10px 10px 35px; border: 1px solid #ccc; border-radius: 8px; outline: none; font-size: 14px; background: white;
-    }
-    .input-group select { cursor: pointer; }
-    .input-group input:focus, .input-group select:focus { border-color: #007bff; }
-    .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .btn {
-      padding: 10px; border: none; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; gap: 5px; color: white; transition: 0.2s;
-    }
-    .primary-btn { background-color: #28a745; }
-    .secondary-btn { background-color: #17a2b8; }
-    .accent-btn { background-color: #6f42c1; }
-    .danger-btn { background-color: #dc3545; }
-    .btn:hover { opacity: 0.9; }
-
-    .live-navigation-card {
-      position: absolute; top: 15px; right: 15px; z-index: 1000;
-      background: #1e1e2f; color: white; padding: 15px 20px; border-radius: 12px;
-      box-shadow: 0 6px 25px rgba(0,0,0,0.3); width: 320px; max-width: 90vw;
-    }
-    .live-navigation-card.hidden { display: none; }
-    .live-navigation-card h3 { font-size: 16px; margin-bottom: 8px; color: #4cd137; display: flex; align-items: center; gap: 8px; }
-    .instruction-text { font-size: 15px; font-weight: bold; margin-bottom: 10px; }
-    .trip-stats { display: flex; justify-content: space-between; font-size: 13px; color: #dcdde1; border-top: 1px solid #353b48; padding-top: 8px; }
-
-    .layer-selector { display: flex; justify-content: space-between; font-size: 12px; color: #333; padding-top: 5px; border-top: 1px solid #eee; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Live Navigation Map</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .control-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            width: 320px;
+            max-width: calc(100vw - 40px);
+        }
+        .control-panel input, .control-panel select, .control-panel button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        .control-panel button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .control-panel button:hover {
+            background-color: #0056b3;
+        }
+        #instructions-container {
+            background: #f9f9f9;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 6px;
+            max-height: 140px;
+            overflow-y: auto;
+            font-size: 13px;
+            border: 1px solid #ddd;
+        }
+        #instructions-list {
+            padding-left: 15px;
+            margin: 5px 0;
+        }
+    </style>
 </head>
 <body>
 
-  <div class="search-container">
-    <div class="input-group">
-      <i class="fa-solid fa-location-dot input-icon"></i>
-      <input type="text" id="start-input" placeholder="Start location (Leave blank for Live GPS)" />
+    <div class="control-panel">
+        <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;">Live Navigation</h3>
+        <input type="text" id="start-loc" placeholder="Start Location (Optional, default GPS)" value="">
+        <input type="text" id="end-loc" placeholder="Destination (e.g., Delhi)" value="Mumbai">
+        
+        <select id="transport-mode">
+            <option value="driving">Car / Driving</option>
+            <option value="walking">Walking</option>
+            <option value="cycling">Cycling</option>
+        </select>
+
+        <button onclick="startNavigation()">Start Navigation</button>
+        <button onclick="panToMyLocation()" style="background-color: #28a745;">My Location</button>
+
+        <div id="instructions-container">
+            <b>Directions:</b>
+            <ul id="instructions-list">
+                <li>Destination enter karke Start Navigation dabayein.</li>
+            </ul>
+        </div>
     </div>
-    <div class="input-group">
-      <i class="fa-solid fa-flag-checkered input-icon"></i>
-      <input type="text" id="destination-input" placeholder="Search destination (e.g. Gopalganj)..." />
-    </div>
-    <div class="input-group">
-      <i class="fa-solid fa-person-biking input-icon"></i>
-      <select id="transport-mode">
-        <option value="driving">Car / Driving</option>
-        <option value="walking">Walking</option>
-        <option value="cycling">Cycling</option>
-      </select>
-    </div>
-    <div class="button-group">
-      <button id="route-btn" class="btn primary-btn"><i class="fa-solid fa-route"></i> Start Navigation</button>
-      <button id="my-location-btn" class="btn secondary-btn"><i class="fa-solid fa-crosshairs"></i> My Location</button>
-      <button id="share-btn" class="btn accent-btn"><i class="fa-solid fa-share-nodes"></i> Share Link</button>
-      <button id="clear-btn" class="btn danger-btn"><i class="fa-solid fa-trash-can"></i> End Trip</button>
-    </div>
-    <div class="layer-selector">
-      <label><input type="radio" name="map-layer" value="streets" checked /> Streets</label>
-      <label><input type="radio" name="map-layer" value="satellite" /> Satellite</label>
-      <label><input type="radio" name="map-layer" value="terrain" /> Terrain</label>
-    </div>
-  </div>
 
-  <div id="live-card" class="live-navigation-card hidden">
-    <h3><i class="fa-solid fa-volume-high"></i> Voice & Live Navigation</h3>
-    <div id="current-instruction" class="instruction-text">Calculating route...</div>
-    <div class="trip-stats">
-      <span>Distance Left: <strong id="live-distance">--</strong></span>
-      <span>Time Left: <strong id="live-time">--</strong></span>
-    </div>
-  </div>
+    <div id="map"></div>
 
-  <div id="map"></div>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Map initialize
+        const map = L.map('map').setView([20.5937, 78.9629], 5);
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+        // Standard OpenStreetMap Tiles
+        const streetsLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
 
-  <script>
-    let map, userMarker, routingControl, destinationMarker;
-    let userLat = null, userLng = null;
-    let watchId = null;
-    let lastSpokenInstruction = "";
+        let currentRouteLayer = null;
+        let userMarker = null;
 
-    // Using Standard OpenStreetMap Tiles (No API Key Required)
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    });
-    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
-    const terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 });
-
-    map = L.map('map', { center: [26.4678, 84.4419], zoom: 12, layers: [streetLayer] });
-
-    document.querySelectorAll('input[name="map-layer"]').forEach(radio => {
-      radio.addEventListener('change', (e) => {
-        map.removeLayer(streetLayer); map.removeLayer(satelliteLayer); map.removeLayer(terrainLayer);
-        if (e.target.value === 'streets') map.addLayer(streetLayer);
-        if (e.target.value === 'satellite') map.addLayer(satelliteLayer);
-        if (e.target.value === 'terrain') map.addLayer(terrainLayer);
-      });
-    });
-
-    function startLiveTracking() {
-      if (navigator.geolocation) {
-        watchId = navigator.geolocation.watchPosition(
-          (position) => {
-            userLat = position.coords.latitude;
-            userLng = position.coords.longitude;
-
-            if (!userMarker) {
-              userMarker = L.marker([userLat, userLng], {
-                icon: L.divIcon({ className: 'live-gps-dot', html: '<i class="fa-solid fa-circle-dot" style="color:#007bff; font-size:20px;"></i>' })
-              }).addTo(map);
-            } else {
-              userMarker.setLatLng([userLat, userLng]);
+        // Voice Guidance function
+        function speak(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                let utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                window.speechSynthesis.speak(utterance);
             }
-          },
-          (err) => console.log(err),
-          { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
-        );
-      }
-    }
-
-    startLiveTracking();
-
-    async function searchLocation(query) {
-      if (!query) return null;
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-      const data = await res.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), name: data[0].display_name };
-      }
-      alert('Location not found.');
-      return null;
-    }
-
-    function speakInstruction(text) {
-      if ('speechSynthesis' in window && text !== lastSpokenInstruction) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        utterance.rate = 1.0;
-        window.speechSynthesis.speak(utterance);
-        lastSpokenInstruction = text;
-      }
-    }
-
-    document.getElementById('my-location-btn').addEventListener('click', () => {
-      if (userLat && userLng) {
-        map.setView([userLat, userLng], 16);
-      } else {
-        alert('Fetching GPS signal...');
-      }
-    });
-
-    document.getElementById('route-btn').addEventListener('click', async () => {
-      const destQuery = document.getElementById('destination-input').value;
-      const mode = document.getElementById('transport-mode').value;
-      if (!destQuery) { alert('Please enter a destination.'); return; }
-
-      let startCoords = [userLat, userLng];
-      const startQuery = document.getElementById('start-input').value;
-      if (startQuery.trim() !== '') {
-        const sRes = await searchLocation(startQuery);
-        if (sRes) startCoords = [sRes.lat, sRes.lon];
-      }
-
-      if (!startCoords[0] || !startCoords[1]) {
-        alert('Current location not detected yet. Please allow location access.');
-        return;
-      }
-
-      const destRes = await searchLocation(destQuery);
-      if (!destRes) return;
-
-      if (routingControl) map.removeControl(routingControl);
-
-      let routerService = L.Routing.osrmv1({
-        serviceUrl: 'https://router.project-osrm.org/route/v1',
-        profile: mode
-      });
-
-      routingControl = L.Routing.control({
-        waypoints: [L.latLng(startCoords[0], startCoords[1]), L.latLng(destRes.lat, destRes.lon)],
-        router: routerService,
-        routeWhileDragging: false,
-        addWaypoints: false,
-        fitSelectedRoutes: true,
-        lineOptions: { styles: [{ color: '#007bff', opacity: 0.8, weight: 6 }] }
-      }).addTo(map);
-
-      document.getElementById('live-card').classList.remove('hidden');
-
-      routingControl.on('routesfound', function(e) {
-        const summary = e.routes[0].summary;
-        const instructions = e.routes[0].instructions;
-
-        document.getElementById('live-distance').innerText = (summary.totalDistance / 1000).toFixed(1) + ' km';
-        document.getElementById('live-time').innerText = Math.round(summary.totalTime / 60) + ' mins';
-
-        if (instructions && instructions.length > 0) {
-          const currentInst = instructions[0].text;
-          document.getElementById('current-instruction').innerText = currentInst;
-          speakInstruction(currentInst);
         }
-      });
-    });
 
-    document.getElementById('share-btn').addEventListener('click', () => {
-      const center = map.getCenter();
-      const url = `${window.location.origin}${window.location.pathname}?lat=${center.lat.toFixed(5)}&lng=${center.lng.toFixed(5)}&zoom=${map.getZoom()}`;
-      navigator.clipboard.writeText(url).then(() => alert('Live map link copied!'));
-    });
+        // Get My Location function
+        function panToMyLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    map.setView([lat, lon], 15);
+                    
+                    if (userMarker) {
+                        userMarker.setLatLng([lat, lon]);
+                    } else {
+                        userMarker = L.marker([lat, lon]).addTo(map).bindPopup("Aap yahan hain!").openPopup();
+                    }
+                    speak("Aapki current location mil gayi hai.");
+                }, error => {
+                    alert("Location access denied or unavailable.");
+                }, { enableHighAccuracy: true });
+            } else {
+                alert("Geolocation is not supported by your browser.");
+            }
+        }
 
-    document.getElementById('clear-btn').addEventListener('click', () => {
-      if (routingControl) map.removeControl(routingControl);
-      if (destinationMarker) map.removeLayer(destinationMarker);
-      document.getElementById('live-card').classList.add('hidden');
-      document.getElementById('destination-input').value = '';
-      document.getElementById('start-input').value = '';
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-    });
-  </script>
+        // Geocoding and Routing function
+        async function startNavigation() {
+            const startQuery = document.getElementById('start-loc').value;
+            const endQuery = document.getElementById('end-loc').value;
+            const mode = document.getElementById('transport-mode').value;
+
+            if (!endQuery) {
+                alert("Please enter a destination!");
+                return;
+            }
+
+            let startCoords = null;
+
+            if (startQuery.trim() !== "") {
+                startCoords = await getCoordinates(startQuery);
+            } else {
+                try {
+                    const pos = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true });
+                    });
+                    startCoords = [pos.coords.longitude, pos.coords.latitude];
+                } catch (e) {
+                    alert("Start location nahi mili, please GPS on karein.");
+                    return;
+                }
+            }
+
+            const endCoords = await getCoordinates(endQuery);
+
+            if (!startCoords || !endCoords) {
+                alert("Location nahi mili. Sahi naam enter karein.");
+                return;
+            }
+
+            getRoute(startCoords, endCoords, mode);
+        }
+
+        async function getCoordinates(query) {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    return [parseFloat(data[0].lon), parseFloat(data[0].lat)];
+                }
+            } catch (error) {
+                console.error("Geocoding error:", error);
+            }
+            return null;
+        }
+
+        async function getRoute(start, end, mode) {
+            let profile = 'driving';
+            if (mode === 'walking') profile = 'foot';
+            if (mode === 'cycling') profile = 'bike';
+
+            const url = `https://router.project-osrm.org/route/v1/${profile}/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson&steps=true`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.routes && data.routes.length > 0) {
+                    const route = data.routes[0];
+                    const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+                    if (currentRouteLayer) {
+                        map.removeLayer(currentRouteLayer);
+                    }
+
+                    currentRouteLayer = L.polyline(coords, { color: 'blue', weight: 6, opacity: 0.8 }).addTo(map);
+                    map.fitBounds(currentRouteLayer.getBounds());
+
+                    // Render turn-by-turn directions list
+                    const instructionsList = document.getElementById('instructions-list');
+                    instructionsList.innerHTML = '';
+
+                    if (route.legs && route.legs[0].steps) {
+                        route.legs[0].steps.forEach((step) => {
+                            let li = document.createElement('li');
+                            li.innerText = step.maneuver.instruction + ` (${Math.round(step.distance)}m)`;
+                            instructionsList.appendChild(li);
+                        });
+
+                        if (route.legs[0].steps.length > 0) {
+                            speak("Navigation shuru ho gayi hai. " + route.legs[0].steps[0].maneuver.instruction);
+                        }
+                    }
+                } else {
+                    alert("Route nahi mila.");
+                }
+            } catch (error) {
+                console.error("Routing error:", error);
+                alert("Routing fetch karne me error aayi.");
+            }
+        }
+    </script>
 </body>
 </html>
